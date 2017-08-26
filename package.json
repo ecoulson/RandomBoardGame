@@ -1,0 +1,22 @@
+{
+  "name": "brad-gam",
+  "version": "1.0.0",
+  "description": "oooooffffff",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ecoulson/RandomBoardGame.git"
+  },
+  "author": "Evan Coulson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ecoulson/RandomBoardGame/issues"
+  },
+  "homepage": "https://github.com/ecoulson/RandomBoardGame#readme",
+  "dependencies": {
+    "mysql": "^2.14.1"
+  }
+}
