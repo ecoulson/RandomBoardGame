@@ -17,6 +17,9 @@
   },
   "homepage": "https://github.com/ecoulson/RandomBoardGame#readme",
   "dependencies": {
-    "mysql": "^2.14.1"
+    "express": "^4.15.4",
+    "mongoose": "^4.11.8",
+    "mysql": "^2.14.1",
+    "socket.io": "^2.0.3"
   }
 }
