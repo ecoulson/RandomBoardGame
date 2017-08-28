@@ -21,8 +21,8 @@ function createPayload(json) {
 let game = (function() {
     const scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.set(10, -70, 80);
-    camera.rotation.x = 0.5;
+    camera.position.set(0, -55, 80);
+    camera.rotation.x = 0.4;
     
     const renderer = new THREE.WebGLRenderer();
     
@@ -31,7 +31,7 @@ let game = (function() {
     render = render.bind(this);
 
     const playerGeometry = new THREE.ConeGeometry(1.5, 4.25, 32);
-    const boardGeometry = new THREE.BoxGeometry(75, 100, 0.1);
+    const boardGeometry = new THREE.BoxGeometry(100, 130, 0.1);
     const cardGeometry = new THREE.BoxGeometry(1.5,2,0.2);
     const MunckinBoardTexture = new THREE.TextureLoader().load("/src/MunchkinBoard.jpg" );
     const boardMaterial = new THREE.MeshPhongMaterial({map: MunckinBoardTexture, shininess: 10, flatShading: THREE.FlatShading });
