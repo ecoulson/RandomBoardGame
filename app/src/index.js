@@ -25,10 +25,11 @@ let game = (function() {
     
     const renderer = new THREE.WebGLRenderer();
     
-    getPlayer = getPlayer.bind(this);
+    getGameData = getGameData.bind(this);
     render = render.bind(this);
     drawDeck = drawDeck.bind(this);
     createDeckMeshes = createDeckMeshes.bind(this);
+    createPlayerMeshes = createPlayerMeshes.bind(this);
     start = start.bind(this);
     drawCard = drawCard.bind(this);
     levelUp = levelUp.bind(this);
@@ -41,13 +42,15 @@ let game = (function() {
     const MunckinDoorTexture = new THREE.TextureLoader().load("/src/DoorBack.png");
     const MunckinTreasureTexture = new THREE.TextureLoader().load("/src/TreasureBack.png");
     const boardMaterial = new THREE.MeshPhongMaterial({map: MunckinBoardTexture, shininess: 10, flatShading: THREE.FlatShading });
-    const playerMaterial = new THREE.MeshPhongMaterial({color: 0xff0000, shininess: 1, });
+    const playerMaterial = new THREE.MeshPhongMaterial({color: '#'+Math.floor(Math.random()*16777215).toString(16), shininess: 1, });
     const doorBackMaterial = new THREE.MeshPhongMaterial({map: MunckinDoorTexture});
     const treasureBackMaterial = new THREE.MeshPhongMaterial({map: MunckinTreasureTexture});
 
 
     this.state = {
+        firstRender: false,
         player: null,
+        players: [],
         playerMeshes: {
 
         },
@@ -96,40 +99,67 @@ let game = (function() {
             }
         }
     };
-    this.state.players = [this.state.player];
-    
-    socket.emit('getState', createPayload({ name: 'test' }));
-    
-    socket.on('updatePlayers', (payload) => {
-        let json = handlePayload(payload);
-        if (this.state.player === null) {
-            this.state.player = json[json.length - 1];
-            createPlayerMesh(this.state.player);
-        } else {
-            for (let i = 0; i < json.length; i++) {
-                if (json[i].id == this.state.player.id) {
-                    this.state.player = json[i];
-                }
-            }
-        }
-        if (this.state.players.length < json.length) {
-            for (let i = this.state.players.length - 1; i < json.length; i++) {
-                createPlayerMesh(json[i]);
-            }
-        }
-        this.state.players = json;
-    });
 
     window.addEventListener('resize', onWindowResize, false);
 
     function start() {
-        setup();
-        
-        addLights();
+        getGameData(() => {
+            console.log('here');
+            setup();
+            addLights();
+            createPlayerMeshes();
+            createBoardMesh();
+            render();
+            
+            socket.on('players', (payload) => {
+                let players = handlePayload(payload);
+                console.log(players);
+                this.state.players = players;
+                for (let i = 0; i < players.length; i++) {
+                    if (players[i].id == this.state.playerID) {
+                        this.state.player = players[i];
+                    }
+                }
+            })
+        });
+    }
 
-        createBoardMesh();
+    function getGameData(next) {
+        getPlayerID((id) => {
+            this.state.playerID = id;
+            socket.on('currentPlayers', (payload) => {
+                let players = handlePayload(payload);
+                this.state.players = players;
+                for (let i = 0; i < players.length; i++) {
+                    if (players[i].id == this.state.playerID) {
+                        this.state.player = players[i];
+                    }
+                }
+                if (!this.state.firstRender) {
+                    this.state.firstRender = true;
+                    this.state.canRender = true;
+                    next();
+                }
+            });
+            socket.emit('getCurrentPlayers');
+        });
+    }
 
-        render();
+    function getPlayerID(next) {
+        if (window.localStorage.getItem('playerID')) {
+            return next(window.localStorage.getItem('playerID'));
+        } else {
+            let username = { name: 'test' }
+            socket.emit('createPlayer', createPayload(username));
+        }
+        socket.on('newPlayerID', (payload) => {
+            let json = handlePayload(payload);
+            let id = json.id;
+            // window.localStorage.setItem('playerID', id);
+            if (!this.state.playerID) {
+                return next(id);
+            }
+        });
     }
 
     function setup() {
@@ -141,8 +171,8 @@ let game = (function() {
     }
 
     function addLights() {
-        var light2 = new THREE.DirectionalLight(0xffffff, 0.9, 100);
-        light2.position.set(100, 100, 150);
+        var light2 = new THREE.DirectionalLight(0xffffff, 0.9);
+        light2.position.set(0, 100, 150);
         light2.castShadow = true;
         light2.shadow.mapWidth = 1024;
         light2.shadow.mapHeight = 1024;
@@ -167,19 +197,24 @@ let game = (function() {
         boardMesh.receiveShadow = true;
         scene.add(boardMesh);
         createDeckMeshes(this.state.doorDeck.deck, doorBackMaterial);
+        createDeckMeshes(this.state.doorDeck.discard, doorBackMaterial);
         createDeckMeshes(this.state.treasureDeck.deck, treasureBackMaterial);
-        createDeckMeshes(this.state.treasureDeck.discard, treasureBackMaterial);
+        createDeckMeshes(this.state.treasureDeck.discard, treasureBackMaterial);    
     }
 
-    function createPlayerMesh(player) {
-        let playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
-        playerMesh.rotation.x = 90 * Math.PI / 180;
-        playerMesh.position.x = player.pos.x;
-        playerMesh.position.y = player.pos.y;
-        playerMesh.position.z = player.pos.z;
-        playerMesh.castShadow = true;
-        this.state.playerMeshes[player.id] = playerMesh;
-        scene.add(playerMesh);
+    function createPlayerMeshes() {
+        this.state.players.forEach((player) => {
+            let playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+            playerMesh.name = player.id;
+            playerMesh.rotation.x = 90 * Math.PI / 180;
+            playerMesh.position.x = player.pos.x;
+            playerMesh.position.y = player.pos.y;
+            playerMesh.position.z = player.pos.z;
+            playerMesh.castShadow = true;
+            scene.remove(this.state.playerMeshes[player.id]);
+            this.state.playerMeshes[player.id] = playerMesh;
+            scene.add(playerMesh);
+        });
     }
 
     function createDeckMeshes(deck, material) {
@@ -189,7 +224,7 @@ let game = (function() {
             cardMesh.rotation.z = deck.rotation;
             cardMesh.position.x = deck.pos.x;
             cardMesh.position.y = deck.pos.y;
-            cardMesh.position.z = 0.1 * i;
+            cardMesh.position.z = 0.05 * i;
             scene.add(cardMesh);
         }
     }
@@ -208,7 +243,7 @@ let game = (function() {
     function drawCard(deck) {
         if (deck == 'door') {
             this.state.doorDeck.deck.size--;
-        } else {
+        } else if (deck == 'treasure') {
             this.state.treasureDeck.deck.size--;
         }
     }
@@ -223,23 +258,33 @@ let game = (function() {
     }
 
     function render() {
-        if (this.state.player !== null) {
+        if (this.state.canRender) {
             movePlayer();
+            drawDeck(this.state.doorDeck.deck, doorBackMaterial);
+            drawDeck(this.state.doorDeck.discard, doorBackMaterial);
+            drawDeck(this.state.treasureDeck.deck, treasureBackMaterial);
+            drawDeck(this.state.treasureDeck.discard, treasureBackMaterial);
+            renderer.render(scene, camera);
         }
-        renderer.render(scene, camera);
-        drawDeck(this.state.doorDeck.deck, doorBackMaterial);
-        drawDeck(this.state.treasureDeck.deck, treasureBackMaterial);
-        drawDeck(this.state.treasureDeck.discard, treasureBackMaterial);
         requestAnimationFrame(render);
     }
 
     function levelUp(l) {
         this.state.player.level += l;
+        if (this.state.player.level > 10) {
+            this.state.player.level = 10;
+        }
+        if (this.state.player.level < 0) {
+            this.state.player.level = 0;
+        }
         console.log(createPayload(this.state.player));
-        socket.emit('p-level', createPayload(this.state.player));
+        socket.emit('levelUp', createPayload(this.state.player));
     }
 
     function movePlayer() {
+        if (this.state.players.length > Object.keys(this.state.playerMeshes).length) {
+            createPlayerMeshes();
+        }
         this.state.players.forEach((player) => {
             let mesh = this.state.playerMeshes[player.id];
             mesh.position.x = player.pos.x;
