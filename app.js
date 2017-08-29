@@ -14,7 +14,7 @@ app.get('/', (req, res) => {
     res.sendFile(gamePagePath);
 });
 
-http.listen(port, (req, res) => {
+http.listen(process.env.PORT || port || 8080, (req, res) => {
     console.log(`Listening on ${port}`);
     SocketAPI(http);
 });
