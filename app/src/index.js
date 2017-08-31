@@ -21,7 +21,8 @@ function createPayload(json) {
 let game = (function() {
     const scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.set(0, 0, 100);
+    camera.position.set(0, 0, 150);
+    document.addEventListener( 'mousedown', handleClick, false );
     
     const renderer = new THREE.WebGLRenderer();
     
@@ -34,6 +35,8 @@ let game = (function() {
     drawCard = drawCard.bind(this);
     levelUp = levelUp.bind(this);
     movePlayer = movePlayer.bind(this);
+    handleClick = handleClick.bind(this);
+    getNonEmptyDecks = getNonEmptyDecks.bind(this);
 
     const playerGeometry = new THREE.ConeGeometry(1.5, 4.25, 32);
     const boardGeometry = new THREE.BoxGeometry(100, 130, 0.1);
@@ -196,10 +199,10 @@ let game = (function() {
         let boardMesh = new THREE.Mesh(boardGeometry, boardMaterial);
         boardMesh.receiveShadow = true;
         scene.add(boardMesh);
-        createDeckMeshes(this.state.doorDeck.deck, doorBackMaterial);
-        createDeckMeshes(this.state.doorDeck.discard, doorBackMaterial);
-        createDeckMeshes(this.state.treasureDeck.deck, treasureBackMaterial);
-        createDeckMeshes(this.state.treasureDeck.discard, treasureBackMaterial);    
+        createDeckMeshes(this.state.doorDeck.deck, [doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, playerMaterial], 'door');
+        createDeckMeshes(this.state.doorDeck.discard, [doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, playerMaterial], 'door');
+        createDeckMeshes(this.state.treasureDeck.deck, [treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, playerMaterial], 'treasure');
+        createDeckMeshes(this.state.treasureDeck.discard, [treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, playerMaterial], 'treasure');    
     }
 
     function createPlayerMeshes() {
@@ -217,37 +220,139 @@ let game = (function() {
         });
     }
 
-    function createDeckMeshes(deck, material) {
+    function createDeckMeshes(deck, materials, name) {
         for (let i = 0; i < deck.size; i++) {
-            let cardMesh = new THREE.Mesh(cardGeometry, material);
+            let cardMesh = new THREE.Mesh(cardGeometry, materials);
             deck.meshes.push(cardMesh);
             cardMesh.rotation.z = deck.rotation;
             cardMesh.position.x = deck.pos.x;
             cardMesh.position.y = deck.pos.y;
             cardMesh.position.z = 0.05 * i;
+            cardMesh.name = name;
             scene.add(cardMesh);
         }
     }
 
-    function drawDeck(deck, material) {
-        
+    function drawDeck(deck) {
         if (deck.meshes.length != deck.size) {
             for (let i = 0; i < deck.meshes.length; i++) {
                 scene.remove(deck.meshes[i]);
+                deck.meshes.splice(i, 1);
             }
-            deck.meshes = [];
-            createDeckMeshes(deck, material);
         }
     }
 
     function drawCard(deck) {
         if (deck == 'door') {
             this.state.doorDeck.deck.size--;
+            animateCard(this.state.doorDeck.deck.meshes.pop(), deck, 'youTake');
+            return null;
         } else if (deck == 'treasure') {
             this.state.treasureDeck.deck.size--;
+            animateCard(this.state.treasureDeck.deck.meshes.pop(), deck, 'youTake');
+            return null;
         }
     }
     
+    function animateCard(mesh, deckType, animationType) {
+        switch (animationType) {
+            case 'display':
+                if (deckType == 'door') {
+                    doorAnimation(mesh);
+                } else {
+                    treasureAnimation(mesh);
+                }
+                break;
+            case 'otherTake':
+                otherPlayerTakeCardAnimation(mesh);
+                break;
+            case 'youTake':
+                if (deckType == 'door') {
+                    youTakeDoorCardAnimation(mesh)
+                } else {
+                    youTakeTreasureCardAnimation(mesh);
+                }
+                break;
+        }
+    }
+
+    function doorAnimation(mesh) {
+        let interval = setInterval(() => {
+            if (mesh.rotation.x < 180 * Math.PI / 180) {
+                mesh.rotation.x += 1.5 * Math.PI / 180;
+            }
+            if (mesh.rotation.z < 360 * Math.PI / 180) {
+                mesh.rotation.z += 1 * Math.PI / 180;
+            }
+            if (mesh.position.y > -80) {
+                mesh.position.y += -0.375;
+            }
+            if (mesh.position.y <= -80 && mesh.rotation.z >= 360 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                clearInterval(interval);
+            }
+        }, 10);
+    }
+
+    function otherPlayerTakeCardAnimation(mesh) {
+        let interval = setInterval(() => {
+            if (mesh.position.y < 160) {
+                mesh.position.y += 1.5;
+                mesh.position.x += 0.1;
+                mesh.rotation.x += 0.5 * Math.PI / 180;
+            }
+            if (mesh.position.y >= 160) {
+                clearInterval(interval);
+            }
+        }, 10);
+    }
+
+    function youTakeDoorCardAnimation(mesh) {
+        let interval = setInterval(() => {
+            if (mesh.rotation.x < 180 * Math.PI / 180) {
+                mesh.rotation.x += 1.5 * Math.PI / 180;
+            }
+            if (mesh.rotation.z < 360 * Math.PI / 180) {
+                mesh.rotation.z += 1 * Math.PI / 180;
+            }
+            if (mesh.position.y > -110) {
+                mesh.position.y += -1;
+            }
+            if (mesh.position.y <= -110 && mesh.rotation.z >= 360 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                clearInterval(interval);
+            }
+        }, 10);
+    }
+
+    function youTakeTreasureCardAnimation(mesh) {
+        let interval = setInterval(() => {
+            if (mesh.rotation.x < 180 * Math.PI / 180) {
+                mesh.rotation.x += 1.5 * Math.PI / 180;
+            }
+            if (mesh.rotation.z < 180 * Math.PI / 180) {
+                mesh.rotation.z += 1 * Math.PI / 180;
+            }
+            if (mesh.position.y > -110) {
+                mesh.position.y += -1;
+            }
+            if (mesh.position.y <= -110 && mesh.rotation.z >= 180 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                clearInterval(interval);
+            }
+        }, 10);
+    }
+
+    function treasureAnimation(mesh) {
+        let interval = setInterval(() => {
+            if (mesh.rotation.x < 180 * Math.PI / 180) {
+                mesh.rotation.x += 1.5 * Math.PI / 180;
+            }
+            if (mesh.rotation.z < 180 * Math.PI / 180) {
+                mesh.rotation.z += 1 * Math.PI / 180;
+            }
+            if (mesh.rotation.z >= 180 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                clearInterval(interval);
+            }
+        }, 50);
+    }
 
     function getPlayer() {
         return this.state.player;
@@ -260,10 +365,10 @@ let game = (function() {
     function render() {
         if (this.state.canRender) {
             movePlayer();
-            drawDeck(this.state.doorDeck.deck, doorBackMaterial);
-            drawDeck(this.state.doorDeck.discard, doorBackMaterial);
-            drawDeck(this.state.treasureDeck.deck, treasureBackMaterial);
-            drawDeck(this.state.treasureDeck.discard, treasureBackMaterial);
+            drawDeck(this.state.doorDeck.deck);
+            drawDeck(this.state.doorDeck.discard);
+            drawDeck(this.state.treasureDeck.deck);
+            drawDeck(this.state.treasureDeck.discard);
             renderer.render(scene, camera);
         }
         requestAnimationFrame(render);
@@ -296,7 +401,39 @@ let game = (function() {
     function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    
+    function handleClick(event) {
+    
+        event.preventDefault();
+    
+        var vector = new THREE.Vector3(
+            ( event.clientX / window.innerWidth ) * 2 - 1,
+          - ( event.clientY / window.innerHeight ) * 2 + 1,
+            0.5
+        );
+
+        vector.unproject(camera);
+    
+        var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+    
+        var intersects = ray.intersectObjects(getNonEmptyDecks());
+    
+        if (intersects.length > 0) {
+            drawCard(intersects[0].object.name);
+        }
+    }
+
+    function getNonEmptyDecks() {
+        let nonEmpty = [];
+        if (this.state.doorDeck.deck.size != 0) {
+            nonEmpty.push(this.state.doorDeck.deck.meshes[this.state.doorDeck.deck.size - 1]);
+        }
+        if (this.state.treasureDeck.deck.size != 0) {
+            nonEmpty.push(this.state.treasureDeck.deck.meshes[this.state.treasureDeck.deck.size - 1]);
+        }
+        return nonEmpty;
     }
 
     return {
