@@ -22,7 +22,6 @@ let game = (function() {
     const scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000);
     camera.position.set(0, 0, 150);
-    document.addEventListener( 'mousedown', handleClick, false );
     
     const renderer = new THREE.WebGLRenderer();
     
@@ -42,18 +41,22 @@ let game = (function() {
     youTakeDoorCardAnimation = youTakeDoorCardAnimation.bind(this);
 
     document.addEventListener( 'mousemove', handleHover, false );
+    document.addEventListener( 'mousedown', handleClick, false );
 
     const playerGeometry = new THREE.ConeGeometry(1.5, 4.25, 32);
     const boardGeometry = new THREE.BoxGeometry(100, 130, 0.1);
     const cardGeometry = new THREE.BoxGeometry(13,32,0.2);
-    const MunckinBoardTexture = new THREE.TextureLoader().load("/src/MunchkinBoard.jpg" );
-    const MunckinDoorTexture = new THREE.TextureLoader().load("/src/DoorBack.png");
-    const MunckinTreasureTexture = new THREE.TextureLoader().load("/src/TreasureBack.png");
+
+    const MunckinBoardTexture = new THREE.TextureLoader().load("/src/res/MunchkinBoard.jpg" );
+    const MunckinDoorTexture = new THREE.TextureLoader().load("/src/res/DoorBack.png");
+    const MunckinTreasureTexture = new THREE.TextureLoader().load("/src/res/TreasureBack.png");
+    const testFrontTexture = new THREE.TextureLoader().load("/src/res/doorCards/card0.png");
+
     const boardMaterial = new THREE.MeshPhongMaterial({map: MunckinBoardTexture, shininess: 10, flatShading: THREE.FlatShading });
     const playerMaterial = new THREE.MeshPhongMaterial({color: '#'+Math.floor(Math.random()*16777215).toString(16), shininess: 1, });
     const doorBackMaterial = new THREE.MeshPhongMaterial({map: MunckinDoorTexture});
     const treasureBackMaterial = new THREE.MeshPhongMaterial({map: MunckinTreasureTexture});
-
+    const cardFrontMaterial = new THREE.MeshPhongMaterial({map: testFrontTexture});
 
     this.state = {
         firstRender: false,
@@ -208,10 +211,10 @@ let game = (function() {
         let boardMesh = new THREE.Mesh(boardGeometry, boardMaterial);
         boardMesh.receiveShadow = true;
         scene.add(boardMesh);
-        createDeckMeshes(this.state.doorDeck.deck, [doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, playerMaterial], 'door');
-        createDeckMeshes(this.state.doorDeck.discard, [doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, playerMaterial], 'door');
-        createDeckMeshes(this.state.treasureDeck.deck, [treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, playerMaterial], 'treasure');
-        createDeckMeshes(this.state.treasureDeck.discard, [treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, playerMaterial], 'treasure');    
+        createDeckMeshes(this.state.doorDeck.deck, [doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, cardFrontMaterial], 'door');
+        createDeckMeshes(this.state.doorDeck.discard, [doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, doorBackMaterial, cardFrontMaterial], 'door');
+        createDeckMeshes(this.state.treasureDeck.deck, [treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, cardFrontMaterial], 'treasure');
+        createDeckMeshes(this.state.treasureDeck.discard, [treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, treasureBackMaterial, cardFrontMaterial], 'treasure');    
     }
 
     function createPlayerMeshes() {
@@ -319,9 +322,9 @@ let game = (function() {
         let interval = setInterval(() => {
             let i = this.state.hand.cardMeshes.length;
             mesh.scale.x = 1.5;
-            mesh.scale.y = 1.5;
+            mesh.scale.y = 1;
             let x = (3 * i) + (-13 * mesh.scale.x) * (-i + Math.floor(this.state.hand.maxCount / 2)) - 10;
-            mesh.position.z = 0;
+            mesh.position.z = 10;
             mesh.position.x = x;
             if (mesh.rotation.x < 180 * Math.PI / 180) {
                 mesh.rotation.x += 1.5 * Math.PI / 180;
@@ -333,6 +336,7 @@ let game = (function() {
                 mesh.position.y += -1;
             }
             if (mesh.position.y <= -110 && mesh.rotation.z >= 360 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                mesh.name = 'handCard';
                 addToHand(null, mesh);
                 clearInterval(interval);
             }
@@ -344,9 +348,9 @@ let game = (function() {
         let interval = setInterval(() => {
             let i = this.state.hand.cardMeshes.length;
             mesh.scale.x = 1.5;
-            mesh.scale.y = 1.5;
-            let x = (3 * i) + (-13 * mesh.scale.x) * (-i + Math.floor(this.state.hand.maxCount / 2)) - 15;
-            mesh.position.z = 0;
+            mesh.scale.y = 1;
+            let x = (3 * i) + (-13 * mesh.scale.x) * (-i + Math.floor(this.state.hand.maxCount / 2)) - 10;
+            mesh.position.z = 10;
             mesh.position.x = x;
             if (mesh.rotation.x < 180 * Math.PI / 180) {
                 mesh.rotation.x += 1.5 * Math.PI / 180;
@@ -358,6 +362,7 @@ let game = (function() {
                 mesh.position.y += -1;
             }
             if (mesh.position.y <= -110 && mesh.rotation.z >= 180 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                mesh.name = 'handCard';
                 addToHand(null, mesh);
                 clearInterval(interval);
             }
@@ -432,7 +437,7 @@ let game = (function() {
     
         event.preventDefault();
     
-        var vector = new THREE.Vector3(
+        let vector = new THREE.Vector3(
             ( event.clientX / window.innerWidth ) * 2 - 1,
           - ( event.clientY / window.innerHeight ) * 2 + 1,
             0.5
@@ -440,13 +445,43 @@ let game = (function() {
 
         vector.unproject(camera);
     
-        var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+        let ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
     
-        var intersects = ray.intersectObjects(getNonEmptyDecks());
-    
+        let meshes = getNonEmptyDecks();
+        let handMeshs = this.state.hand.cardMeshes;        
+
+        let intersects = ray.intersectObjects(meshes.concat(handMeshs));
         if (intersects.length > 0) {
-            drawCard(intersects[0].object.name);
+            let name = intersects[0].object.name;
+            if (name == 'focused') {
+                let node = document.getElementById('CardUI');
+                if (node) {
+                    node.outerHTML = '';
+                    delete node;
+                }
+                let div = document.createElement('div');
+                div.id = 'CardUI';
+                div.innerHTML = `<span class="Card-UI-Option">Equip</span><span class="Card-UI-Option">Discard</span>`;
+                div.style.position = 'fixed';
+                div.style.top = event.clientY;
+                div.style.left = event.clientX;
+                document.body.appendChild(div);
+            } else {
+                drawCard(intersects[0].object.name);
+            }
         }
+    }
+
+    function discard() {
+
+    }
+
+    function expandCard(cardMesh) {
+        cardMesh.position.y = -65.5;
+        cardMesh.scale.x = 3;
+        cardMesh.scale.y = 2;
+        cardMesh.position.z = 11;
+        cardMesh.name = 'focused';
     }
 
     function handleHover(event) {
@@ -461,8 +496,22 @@ let game = (function() {
         
         let ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
         var intersects = ray.intersectObjects(this.state.hand.cardMeshes);
+        for (let i = 0; i < this.state.hand.cardMeshes.length; i++) {
+            this.state.hand.cardMeshes[i].position.y = -110;
+            this.state.hand.cardMeshes[i].position.z = 10;
+            this.state.hand.cardMeshes[i].scale.x = 1.5;
+            this.state.hand.cardMeshes[i].scale.y = 1;
+            this.state.hand.cardMeshes[i].rotation.z = 0;
+            this.state.hand.cardMeshes[i].name = 'card';
+        }
         if (intersects.length > 0) {
-            console.log('expand card');
+            expandCard(intersects[0].object);
+        } else {
+            let node = document.getElementById('CardUI');
+            if (node) {
+                node.outerHTML = '';
+                delete node;
+            }
         }
     } 
 
@@ -489,6 +538,7 @@ let game = (function() {
         drawCard: drawCard,
         state: this.state,
         levelUp: levelUp,
+        discard: discard,
     };
 })();
 game.start();
