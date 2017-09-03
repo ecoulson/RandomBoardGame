@@ -36,7 +36,12 @@ let game = (function() {
     levelUp = levelUp.bind(this);
     movePlayer = movePlayer.bind(this);
     handleClick = handleClick.bind(this);
+    handleHover = handleHover.bind(this);
     getNonEmptyDecks = getNonEmptyDecks.bind(this);
+    addToHand = addToHand.bind(this);
+    youTakeDoorCardAnimation = youTakeDoorCardAnimation.bind(this);
+
+    document.addEventListener( 'mousemove', handleHover, false );
 
     const playerGeometry = new THREE.ConeGeometry(1.5, 4.25, 32);
     const boardGeometry = new THREE.BoxGeometry(100, 130, 0.1);
@@ -54,9 +59,7 @@ let game = (function() {
         firstRender: false,
         player: null,
         players: [],
-        playerMeshes: {
-
-        },
+        playerMeshes: {},
         doorDeck: {
             deck: {
                 cards: [],
@@ -100,6 +103,12 @@ let game = (function() {
                     y: -16.5,
                 }
             }
+        },
+        hand: {
+            size: 0,
+            cards: [],
+            cardMeshes: [],
+            maxCount: 5,
         }
     };
 
@@ -284,10 +293,10 @@ let game = (function() {
             if (mesh.rotation.z < 360 * Math.PI / 180) {
                 mesh.rotation.z += 1 * Math.PI / 180;
             }
-            if (mesh.position.y > -80) {
+            if (mesh.position.y > -100) {
                 mesh.position.y += -0.375;
             }
-            if (mesh.position.y <= -80 && mesh.rotation.z >= 360 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+            if (mesh.position.y <= -100 && mesh.rotation.z >= 360 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
                 clearInterval(interval);
             }
         }, 10);
@@ -308,6 +317,12 @@ let game = (function() {
 
     function youTakeDoorCardAnimation(mesh) {
         let interval = setInterval(() => {
+            let i = this.state.hand.cardMeshes.length;
+            mesh.scale.x = 1.5;
+            mesh.scale.y = 1.5;
+            let x = (3 * i) + (-13 * mesh.scale.x) * (-i + Math.floor(this.state.hand.maxCount / 2)) - 10;
+            mesh.position.z = 0;
+            mesh.position.x = x;
             if (mesh.rotation.x < 180 * Math.PI / 180) {
                 mesh.rotation.x += 1.5 * Math.PI / 180;
             }
@@ -318,13 +333,21 @@ let game = (function() {
                 mesh.position.y += -1;
             }
             if (mesh.position.y <= -110 && mesh.rotation.z >= 360 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                addToHand(null, mesh);
                 clearInterval(interval);
             }
+
         }, 10);
     }
 
     function youTakeTreasureCardAnimation(mesh) {
         let interval = setInterval(() => {
+            let i = this.state.hand.cardMeshes.length;
+            mesh.scale.x = 1.5;
+            mesh.scale.y = 1.5;
+            let x = (3 * i) + (-13 * mesh.scale.x) * (-i + Math.floor(this.state.hand.maxCount / 2)) - 15;
+            mesh.position.z = 0;
+            mesh.position.x = x;
             if (mesh.rotation.x < 180 * Math.PI / 180) {
                 mesh.rotation.x += 1.5 * Math.PI / 180;
             }
@@ -335,6 +358,7 @@ let game = (function() {
                 mesh.position.y += -1;
             }
             if (mesh.position.y <= -110 && mesh.rotation.z >= 180 * Math.PI / 180 && mesh.rotation.x >= 180 * Math.PI / 180) {
+                addToHand(null, mesh);
                 clearInterval(interval);
             }
         }, 10);
@@ -425,6 +449,23 @@ let game = (function() {
         }
     }
 
+    function handleHover(event) {
+        event.preventDefault();
+        let vector = new THREE.Vector3(
+            ( event.clientX / window.innerWidth ) * 2 - 1,
+            - ( event.clientY / window.innerHeight ) * 2 + 1,
+            0.5
+        );
+    
+        vector.unproject(camera);
+        
+        let ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+        var intersects = ray.intersectObjects(this.state.hand.cardMeshes);
+        if (intersects.length > 0) {
+            console.log('expand card');
+        }
+    } 
+
     function getNonEmptyDecks() {
         let nonEmpty = [];
         if (this.state.doorDeck.deck.size != 0) {
@@ -434,6 +475,10 @@ let game = (function() {
             nonEmpty.push(this.state.treasureDeck.deck.meshes[this.state.treasureDeck.deck.size - 1]);
         }
         return nonEmpty;
+    }
+
+    function addToHand(card, mesh) {
+        this.state.hand.cardMeshes.push(mesh);
     }
 
     return {
